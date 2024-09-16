@@ -1,12 +1,7 @@
-import uuid
-from typing import List, Optional
-from datetime import datetime
-import requests
-import boto3
 import xml.etree.ElementTree as ET
-from pydantic import BaseModel, Field, HttpUrl, validator, field_validator
-import html2text
-import openai
+from typing import List
+
+import requests
 
 from src.models.RSSItem import RSSItem
 
@@ -20,19 +15,21 @@ class RSSService:
         response = requests.get(RSSService.FEED_URL)
         response.raise_for_status()
         root = ET.fromstring(response.content)
+
         items = []
         for item in root.findall('.//item'):
             item_dict = {}
             for child in item:
-                # Handle namespaces
-                if '}' in child.tag:
-                    tag = child.tag.split('}', 1)[1]
-                else:
-                    tag = child.tag
+                tag = child.tag.split('}', 1)[-1]  # Handle namespaces
                 if tag == 'category':
-                    item_dict.setdefault('category', []).append(child.text)
+                    item_dict.setdefault('categories', []).append(child.text)
                 else:
                     item_dict[tag] = child.text
+
+            # Rename keys to match RSSItem field names
+            item_dict['pub_date'] = item_dict.pop('pubDate', None)
+
             rss_item = RSSItem(**item_dict)
             items.append(rss_item)
+
         return items

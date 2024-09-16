@@ -1,23 +1,21 @@
 import uuid
-from typing import List, Optional
 from datetime import datetime
-import requests
-import boto3
-import xml.etree.ElementTree as ET
-from pydantic import BaseModel, Field, HttpUrl, validator, field_validator
-import html2text
-import openai
+from typing import List, Optional
+
+from pydantic import BaseModel, Field, HttpUrl, field_validator
+
 
 class RSSItem(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     title: str
     link: HttpUrl
     creator: Optional[str] = Field(None)
-    pub_date: datetime = Field(alias='pubDate')
-    categories: List[str] = Field(default_factory=list, alias='category')
+    pub_date: datetime = Field()
+    categories: List[str] = Field(default_factory=list)
     guid: str
     description: str
-    outlet:str="TechCrunch"
+    outlet: str = "TechCrunch"
+    processed: bool = Field(default=False)
 
     def model_dump(self, **kwargs):
         # Call the super().model_dump() to get the original dictionary
@@ -27,8 +25,11 @@ class RSSItem(BaseModel):
         data['link'] = str(self.link)
         # Convert pub_date to ISO 8601 string
         data['pub_date'] = self.pub_date.isoformat()
+        data['processed'] = int(self.processed)
         return data
 
     @field_validator('pub_date', mode='before')
     def parse_pub_date(cls, value):
+        if isinstance(value, datetime):
+            return value
         return datetime.strptime(value, '%a, %d %b %Y %H:%M:%S %z')
