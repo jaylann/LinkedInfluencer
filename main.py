@@ -2,7 +2,6 @@ import argparse
 import logging
 import os
 
-from src.models.Post import Post
 from src.models.RSSItem import RSSItem
 from src.services.ArticleService import ArticleService
 from src.services.DynamoDBService import DynamoDBService
@@ -19,12 +18,14 @@ def aggregate_news():
     logging.info("Fetching RSS feed")
     dynamodb_service = DynamoDBService()
     logging.info("Saving RSS items to DynamoDB")
-    rss_items = rss_service.fetch_feed()
+    rss_items = rss_service.fetch_tech_crunch()
+    rss_items.extend(rss_service.fetch_ars_technica())
     logging.info(f"Found {len(rss_items)} items in RSS feed")
     try:
         dynamodb_service.save_rss_items(rss_items)
     except Exception as e:
         logging.error(f"Error saving RSS items: {e}")
+
 
 def create_post_from_item(item: RSSItem):
     """Processes a single RSSItem to create a post and updates the RSS feed."""
@@ -34,23 +35,26 @@ def create_post_from_item(item: RSSItem):
     s3_service = S3Service()
 
     try:
-        article_text = article_service.extract_article_text(item.link)
+        article_text = article_service.extract_article_text_tech_crunch(item.link)
         post = openai_service.generate_post(article_text, item)
         dynamodb_service.save_post(post)
 
         # Update RSS feed on S3
         bucket_name = 'linkedin-post-rss-feed'  # Replace with your S3 bucket name
-        key = 'rss_feed.xml'                 # Replace with your S3 object key
+        key = 'rss_feed.xml'  # Replace with your S3 object key
         s3_service.update_rss_feed(bucket_name, key, post)
     except Exception as e:
         print(f"Error processing {item.link}: {e}")
+
 
 def process_rss_items():
     """Retrieves items from DynamoDB and processes each item."""
     dynamodb_service = DynamoDBService()
 
     openai_service = OpenAIService()
-    chosen_item = dynamodb_service.get_random_unprocessed_item()
+    already_posted = dynamodb_service.get_latest_posts(10)
+    choosable = dynamodb_service.get_last_unprocessed_rss_items(20)
+    chosen_item = openai_service.choose_post(choosable, already_posted)
     if chosen_item:
         logging.info(f"Processing item: {chosen_item.link}")
         create_post_from_item(chosen_item)
@@ -58,6 +62,7 @@ def process_rss_items():
         dynamodb_service.update_rss_item(chosen_item)
     else:
         logging.info("No unprocessed items found in DynamoDB")
+
 
 def main(action):
     if action == 'aggregate_news':
@@ -67,8 +72,10 @@ def main(action):
     else:
         print(f"Unknown action: {action}. Please use 'aggregate_news' or 'process_items'.")
 
+
 # Set up basic logging
 logging.basicConfig(level=logging.INFO)
+
 
 def lambda_handler(event, context):
     """Lambda handler that determines action based on environment variable."""
@@ -91,6 +98,7 @@ def lambda_handler(event, context):
         raise
     result = {"status": "success", "message": "Items saved to DynamoDB"}
     return result
+
 
 if __name__ == "__main__":
     print("Running main script")

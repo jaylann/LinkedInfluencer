@@ -1,3 +1,4 @@
+import logging
 import random
 from datetime import datetime
 from typing import List, Optional
@@ -12,6 +13,7 @@ from src.models.Post import Post
 
 class DynamoDBService:
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.dynamodb = boto3.resource('dynamodb', region_name='eu-central-1')
 
     def save_rss_items(self, items: List[RSSItem]) -> None:
@@ -112,7 +114,79 @@ class DynamoDBService:
             print(f"Unexpected error: {str(e)}")
             return None
 
+    def get_last_unprocessed_rss_items(self, amount: int) -> Optional[List[RSSItem]]:
+        """
+        Retrieves a single random unprocessed item from the DynamoDB table.
 
+        Returns:
+            Optional[RSSItem]: A random unprocessed RSSItem if available, None otherwise.
+        """
+        table = self.dynamodb.Table('rss-feed-scraped-articles')
+
+        try:
+            # Query for unprocessed items
+            response = table.query(
+                IndexName='processed-pub_date-index',
+                KeyConditionExpression=Key('processed').eq(0),
+                ScanIndexForward=False,  # Sort in descending order (newest first)
+                Limit=amount
+            )
+
+            items = response.get('Items', [])
+
+            if not items:
+                print("No unprocessed items found.")
+                return None
+
+
+            # Convert the DynamoDB item to an RSSItem
+            try:
+                return [RSSItem(**item) for item in items]
+            except Exception as e:
+                print(f"Error converting DynamoDB item to RSSItem: {str(e)}")
+                return None
+
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            error_message = e.response['Error']['Message']
+            print(f"ClientError querying DynamoDB: {error_code} - {error_message}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            return None
+
+
+    def get_latest_posts(self, amount: int) -> List[Post]:
+        """
+        Retrieves the latest posts from the LinkedIn automation posts table.
+
+        Args:
+            amount (int): The number of posts to retrieve.
+
+        Returns:
+            List[Post]: A list of the latest Post objects.
+        """
+        try:
+            table = self.dynamodb.Table('linkedin-automation-posts')
+            response = table.scan(
+                Limit=amount,
+                ProjectionExpression='id, post_time, title, content, tags, source_link'
+            )
+
+            items = response.get('Items', [])
+
+            if not items:
+                return []
+
+            sorted_items = sorted(items, key=lambda x: x['post_time'], reverse=True)[:amount]
+            return [Post.from_dynamodb_item(item) for item in sorted_items]
+
+        except ClientError as e:
+            self.logger.error(f"ClientError querying DynamoDB: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
+        except Exception as e:
+            self.logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+
+        return []
 
     def get_rss_items(self) -> List[RSSItem]:
         """Retrieves all RSSItem objects from DynamoDB."""
