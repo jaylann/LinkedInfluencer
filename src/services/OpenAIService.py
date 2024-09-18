@@ -52,7 +52,7 @@ class OpenAIService:
         return Post(title=json_response['title'],
                     content=json_response['content'],
                     tags=json_response['tags'],
-                    source_link=item.link)
+                    source_link=item.link, image_link="")
 
     @staticmethod
     def choose_post(items: List[RSSItem], already_posted: List[Post]) -> RSSItem:

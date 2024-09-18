@@ -11,6 +11,7 @@ class Post(BaseModel):
     tags: List[str] = Field(default_factory=list)
     source_link: HttpUrl = Field(default="")
     post_time: datetime.datetime = Field(default_factory=datetime.datetime.now, description="The time the post was created.")
+    image_link: str = Field(default="", description="The link to the image associated with the post.")
 
     @classmethod
     def from_dynamodb_item(cls, item: dict) -> 'Post':
@@ -20,7 +21,8 @@ class Post(BaseModel):
             title=item['title'],
             content=item['content'],
             tags=item['tags'],
-            source_link=item['source_link']
+            source_link=item['source_link'],
+            image_link=item.get('image_link', "")
         )
 
     @field_validator("id", mode="before")

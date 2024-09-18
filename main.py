@@ -35,8 +35,9 @@ def create_post_from_item(item: RSSItem):
     s3_service = S3Service()
 
     try:
-        article_text = article_service.extract_article_text_tech_crunch(item.link)
+        article_text, image_link = article_service.extract_article_text_tech_crunch(item.link)
         post = openai_service.generate_post(article_text, item)
+        post.image_link = image_link
         dynamodb_service.save_post(post)
 
         # Update RSS feed on S3

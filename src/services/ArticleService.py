@@ -1,5 +1,39 @@
+import re
+from typing import Optional
+
 import html2text
 import requests
+from pydantic import BaseModel
+
+
+class ArticleImageExtractor(BaseModel):
+
+    @staticmethod
+    def extract_techcrunch_article_image(text: str) -> Optional[str]:
+        """
+        Extracts the TechCrunch article image link from the given text.
+
+        Args:
+            text (str): The input text containing the link to be extracted.
+
+        Returns:
+            Optional[str]: The extracted link or None if not found.
+        """
+        return text.replace("\n", "").replace(" ", "").split(")**ImageCredits:**")[0].split("![](")[-1].strip().replace("\n", "")
+
+    @staticmethod
+    def extract_arstechnica_article_image(text: str) -> Optional[str]:
+        """
+        Extracts the TechCrunch article image link from the given text.
+
+        Args:
+            text (str): The input text containing the link to be extracted.
+
+        Returns:
+            Optional[str]: The extracted link or None if not found.
+        """
+        return text.split("[Enlarge](")[1].split(")")[0].strip().replace("\n", "")
+
 
 
 class ArticleService:
@@ -13,6 +47,13 @@ class ArticleService:
         text_maker = html2text.HTML2Text()
         text_maker.ignore_links = True
         article_text = text_maker.handle(html_content)
+        text_maker.ignore_links = False
+        links = text_maker.handle(html_content)
+        with open("test.txt", "w") as f:
+            f.write(links)
+
+        image_link = ArticleImageExtractor.extract_techcrunch_article_image(links)
+
 
         start_marker = "#"
         end_marker = "### More TechCrunch"
@@ -24,7 +65,7 @@ class ArticleService:
         if end_pos == -1:
             raise ValueError("End marker not found.")
         extracted_text = article_text[start_pos:end_pos].strip()
-        return extracted_text
+        return extracted_text, image_link
 
     @staticmethod
     def extract_article_text_ars_technica(url: str) -> str:
@@ -35,6 +76,11 @@ class ArticleService:
         text_maker = html2text.HTML2Text()
         text_maker.ignore_links = True
         article_text = text_maker.handle(html_content)
+        text_maker.ignore_links = False
+        links = text_maker.handle(html_content)
+
+        image_link = ArticleImageExtractor.extract_arstechnica_article_image(links)
+
         start_marker = "####"
         end_marker = "### Channel Ars Technica"
         start_pos = article_text.find(start_marker)
@@ -45,7 +91,5 @@ class ArticleService:
         if end_pos == -1:
             raise ValueError("End marker not found.")
         extracted_text = article_text[start_pos:end_pos].strip()
-        return extracted_text
-
-print(ArticleService.extract_article_text_ars_technica("https://arstechnica.com/?p=2047618"))
+        return extracted_text, image_link
 
