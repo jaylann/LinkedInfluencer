@@ -16,5 +16,7 @@ COPY src/ ./src
 # Copy the main.py file directly into /var/task
 COPY main.py .
 
+COPY .env .
+
 # Set the default command to run the main.py script using Python
 CMD ["main.lambda_handler"]
