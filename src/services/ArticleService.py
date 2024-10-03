@@ -42,7 +42,14 @@ class ArticleService:
     def extract_techcrunch_article(cls, url: HttpUrl) -> Tuple[str, Optional[str]]:
         """Extract article text and image link from TechCrunch URL."""
         article_text, links = cls._fetch_and_parse_html(url)
-        extracted_text = cls._extract_text_between_markers(article_text, "#", "### More TechCrunch")
+        print(article_text)
+        try:
+            extracted_text = cls._extract_text_between_markers(article_text, "#", "## Most Popular")
+        except ValueError:
+            try:
+                extracted_text = cls._extract_text_between_markers(article_text, "#", "![Author Avatar]")
+            except ValueError:
+                extracted_text = cls._extract_text_between_markers(article_text, "#", "## Related")
         image_link = ArticleImageExtractionService.extract_techcrunch_image(links)
         return extracted_text, image_link
 
