@@ -5,6 +5,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from src.models.Post import Post
+from src.models.RSSFeed import RSSFeed
 
 
 class S3Service:
