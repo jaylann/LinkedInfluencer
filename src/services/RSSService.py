@@ -1,6 +1,6 @@
 import logging
 import xml.etree.ElementTree as ET
-from typing import List
+from typing import List, Optional
 
 import requests
 from pydantic import ValidationError
@@ -71,7 +71,7 @@ class RSSService:
         return parsed_items
 
     @classmethod
-    def _parse_item(cls, item: ET.Element, outlet: str) -> RSSItem:
+    def _parse_item(cls, item: ET.Element, outlet: str) -> Optional[RSSItem]:
         """
         Parses an XML item element into an RSSItem.
 

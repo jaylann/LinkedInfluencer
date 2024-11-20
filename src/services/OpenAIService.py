@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from doctest import UnexpectedException
 from typing import List
 
 from openai import OpenAI
@@ -76,7 +77,7 @@ class OpenAIService:
 
         if not json_response:
             self.logger.error("Failed to generate post content after %d attempts.", max_attempts)
-            raise Exception("Failed to generate post content.")
+            raise UnexpectedException("Failed to generate post content.")
 
         post = Post(
             title=json_response['title'],
