@@ -2,6 +2,11 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+#==============================================================
+# Similar to ArticleService. Check here if no image is found.
+# Same thing for test cases here.
+#==============================================================
+
 
 class ArticleImageExtractionService(BaseModel):
     @staticmethod

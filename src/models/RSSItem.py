@@ -10,7 +10,6 @@ class RSSItem(BaseModel):
     """
     Represents an RSS feed item with various attributes.
     """
-
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     title: str
     link: HttpUrl
@@ -19,7 +18,7 @@ class RSSItem(BaseModel):
     categories: List[str] = Field(default_factory=list)
     guid: str
     description: str
-    outlet: str = "TechCrunch"
+    outlet: str = "TechCrunch" # Just in case
     processed: bool = False
 
     def model_dump(self, **kwargs) -> dict:

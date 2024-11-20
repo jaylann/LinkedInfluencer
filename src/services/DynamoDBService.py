@@ -1,19 +1,21 @@
 import logging
+import random
 from datetime import datetime
 from typing import List, Optional
-import random
 
 import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from pydantic import ValidationError
 
-from src.models.RSSItem import RSSItem
 from src.models.Post import Post
+from src.models.RSSItem import RSSItem
+
 
 class DynamoDBService:
     """Service class for interacting with DynamoDB tables."""
 
+    # Default is eu-central-1. If your db isn't found you're probably not passing the correct region
     def __init__(self, region_name: str = 'eu-central-1'):
         """
         Initialize the DynamoDBService.
@@ -83,7 +85,8 @@ class DynamoDBService:
 
             return RSSItem(**random_item)
         except ClientError as e:
-            self.logger.error(f"ClientError querying DynamoDB: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
+            self.logger.error(
+                f"ClientError querying DynamoDB: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
         except ValidationError as e:
             self.logger.error(f"Error converting DynamoDB item to RSSItem: {str(e)}")
         except Exception as e:
@@ -116,7 +119,8 @@ class DynamoDBService:
 
             return [RSSItem(**item) for item in items]
         except ClientError as e:
-            self.logger.error(f"ClientError querying DynamoDB: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
+            self.logger.error(
+                f"ClientError querying DynamoDB: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
         except ValidationError as e:
             self.logger.error(f"Error converting DynamoDB items to RSSItems: {str(e)}")
         except Exception as e:
@@ -147,7 +151,8 @@ class DynamoDBService:
             sorted_items = sorted(items, key=lambda x: x['post_time'], reverse=True)[:amount]
             return [Post.from_dynamodb_item(item) for item in sorted_items]
         except ClientError as e:
-            self.logger.error(f"ClientError querying DynamoDB: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
+            self.logger.error(
+                f"ClientError querying DynamoDB: {e.response['Error']['Code']} - {e.response['Error']['Message']}")
         except Exception as e:
             self.logger.error(f"Unexpected error: {str(e)}", exc_info=True)
 

@@ -6,6 +6,14 @@ from pydantic import HttpUrl
 
 from src.services.ArticleImageExtractionService import ArticleImageExtractionService
 
+#==============================================================
+# IF ANYTHING BREAKS THIS IS THE CLASS TO CHECK FIRST.
+# Because with the current method we just use a form of "Delimiters".
+# Basically a string that always appears around the start and end of the article.
+# However the sites may change these leading to our program just reading empty articles or crashing.
+# TODO: Implement tests to check for validty of our delimiters using predefined cases.
+#==============================================================
+
 
 class ArticleService:
     @staticmethod
