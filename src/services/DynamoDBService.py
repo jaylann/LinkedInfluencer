@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 from datetime import datetime
 from typing import List, Optional
@@ -15,18 +16,28 @@ from src.models.RSSItem import RSSItem
 class DynamoDBService:
     """Service class for interacting with DynamoDB tables."""
 
-    # Default is eu-central-1. If your db isn't found you're probably not passing the correct region
-    def __init__(self, region_name: str = 'eu-central-1'):
+    # Default is what you set in .env. If your db isn't found you're probably not passing the correct region
+    def __init__(self, region_name: str = os.getenv("AWS_REGION", "eu-central-1")):
         """
         Initialize the DynamoDBService.
 
         Args:
-            region_name (str): AWS region name. Defaults to 'eu-central-1'.
+            region_name (str): AWS region name. Defaults to what you specified in .env.
         """
         self.logger = logging.getLogger(__name__)
         self.dynamodb = boto3.resource('dynamodb', region_name=region_name)
-        self.rss_table = self.dynamodb.Table('rss-feed-scraped-articles')
-        self.posts_table = self.dynamodb.Table('linkedin-automation-posts')
+        try:
+            self.rss_table = self.dynamodb.Table(os.getenv("DYNAMODB_SCRAPED_TABLE_NAME"))
+        except ClientError as e:
+            self.logger.error(f"Error initializing RSS table: {e.response['Error']['Message']}")
+        except Exception as e:
+            self.logger.error(f"Unexpected error initializing RSS table: {str(e)}")
+        try:
+            self.posts_table = self.dynamodb.Table(os.getenv("DYNAMODB_POSTS_TABLE_NAME"))
+        except ClientError as e:
+            self.logger.error(f"Error initializing posts table: {e.response['Error']['Message']}")
+        except Exception as e:
+            self.logger.error(f"Unexpected error initializing posts table: {str(e)}")
 
     def save_rss_items(self, items: List[RSSItem]) -> None:
         """
