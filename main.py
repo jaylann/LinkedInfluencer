@@ -12,11 +12,11 @@ from src.services.OpenAIService import OpenAIService
 from src.models.OpenAIConfig import OpenAIConfig
 from src.services.RSSService import RSSService
 from src.services.S3Service import S3Service
+from src.utils.logger import setup_logger
 
 load_dotenv(".env")
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logger()
 
 class AppConfig(BaseModel):
     """Application configuration."""
