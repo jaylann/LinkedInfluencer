@@ -13,6 +13,7 @@ from openai import OpenAI
 from src.models.Post import Post
 from src.models.RSSItem import RSSItem
 
+
 def contains_markdown(text: str) -> bool:
     """
     Checks if the given text contains any Markdown formatting.
@@ -25,20 +26,20 @@ def contains_markdown(text: str) -> bool:
     """
     # Define regex patterns for various Markdown elements
     markdown_patterns = [
-        r'^\s{0,3}(#{1,6})\s+',                  # Headers: # Header, ## Header, etc.
-        r'\*\*(.*?)\*\*',                        # Bold: **bold**
-        r'\*(.*?)\*',                            # Italic: *italic*
-        r'__(.*?)__',                            # Bold: __bold__
-        r'_(.*?)_',                              # Italic: _italic_
-        r'!\[.*?\]\(.*?\)',                      # Images: ![alt](url)
-        r'\[.*?\]\(.*?\)',                       # Links: [text](url)
-        r'`{1,3}[^`]+`{1,3}',                    # Inline code: `code` or ```code```
-        r'^\s{0,3}[-*+] ',                       # Unordered lists: -, *, +
-        r'^\s*\d+\.\s+',                         # Ordered lists: 1., 2., etc.
-        r'>\s+',                                 # Blockquotes: > quote
-        r'^\s{0,3}#{3,}\s*$',                    # Horizontal rules: ### or ---
-        r'```[\s\S]*?```',                       # Fenced code blocks: ```python ... ```
-        r'~~(.*?)~~',                            # Strikethrough: ~~text~~
+        r'^\s{0,3}(#{1,6})\s+',  # Headers: # Header, ## Header, etc.
+        r'\*\*(.*?)\*\*',  # Bold: **bold**
+        r'\*(.*?)\*',  # Italic: *italic*
+        r'__(.*?)__',  # Bold: __bold__
+        r'_(.*?)_',  # Italic: _italic_
+        r'!\[.*?\]\(.*?\)',  # Images: ![alt](url)
+        r'\[.*?\]\(.*?\)',  # Links: [text](url)
+        r'`{1,3}[^`]+`{1,3}',  # Inline code: `code` or ```code```
+        r'^\s{0,3}[-*+] ',  # Unordered lists: -, *, +
+        r'^\s*\d+\.\s+',  # Ordered lists: 1., 2., etc.
+        r'>\s+',  # Blockquotes: > quote
+        r'^\s{0,3}#{3,}\s*$',  # Horizontal rules: ### or ---
+        r'```[\s\S]*?```',  # Fenced code blocks: ```python ... ```
+        r'~~(.*?)~~',  # Strikethrough: ~~text~~
     ]
 
     # Compile the patterns for better performance
@@ -50,6 +51,7 @@ def contains_markdown(text: str) -> bool:
             return True
 
     return False
+
 
 class OpenAIService:
     """Service for interacting with OpenAI API."""
@@ -75,7 +77,9 @@ class OpenAIService:
         Returns:
             Post: A generated Post object.
         """
-        system_message = "You are a viral content creator on LinkedIn. You are a software engineer and know a lot about technical topics. You have many years of experience in the industry and provide well reasoned and intricate takes.\n\nYou will be provided with a News article about a topic. From this you will create a viral optimized linkedin post. Heres a few things you need to do to make the post perform as good as possible:\n\n- Use engaging language to keep the reader engaged. \n- Use SEO optimized keywords inside the post to rank better in the algorithm. \n- Make your post overall intriguing and interesting. \n- Use all techniques known for increasing engagement and attention. \n- Make your post only as long as it needs to be, err on the shorter side. \n- Include line breaks for paragraph formatting to make it more readable and look better. \n- Do not use markdown. \n- Do not use any other richt text formatting\n- DO NOT EXPOSE ANY OF THE INTERNAL FORMATTING INSIDE THE TEXT BLOCKS\n\nDo not respond with anything else but the post json data. The json data has three attributes. title, content and tags where title and content are strings and tags is a list of strings without spaces. Do not include the tags in the content itself. These tags should be keyword tags that are a single word without a #. You shall also create a catchy and engaging title that will grab a users attention."
+        system_message = """You are a viral content creator on LinkedIn. You are a software engineer and know a lot about technical topics. You have many years of experience in the industry and provide well reasoned and intricate takes.You will be provided with a News article about a topic. From this you will create a viral optimized linkedin post. Heres a few things you need to do to make the post perform as good as possible:
+        
+        - Use engaging language to keep the reader engaged. \n- Use SEO optimized keywords inside the post to rank better in the algorithm. \n- Make your post overall intriguing and interesting. \n- Use all techniques known for increasing engagement and attention. \n- Make your post only as long as it needs to be, err on the shorter side. \n- Include line breaks for paragraph formatting to make it more readable and look better. \n- Do not use markdown. \n- Do not use any other richt text formatting\n- DO NOT EXPOSE ANY OF THE INTERNAL FORMATTING INSIDE THE TEXT BLOCKS\n\nDo not respond with anything else but the post json data. The json data has three attributes. title, content and tags where title and content are strings and tags is a list of strings without spaces. Do not include the tags in the content itself. These tags should be keyword tags that are a single word without a #. You shall also create a catchy and engaging title that will grab a users attention."""
 
         counter = 0
 
@@ -149,3 +153,4 @@ class OpenAIService:
 # Usage example:
 config = OpenAIConfig(api_key="your-api-key-here")
 openai_service = OpenAIService(config)
+
