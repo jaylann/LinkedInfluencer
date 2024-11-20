@@ -1,14 +1,16 @@
 import logging
 from typing import Optional
+
 from pydantic import BaseModel
 
 # Initialize the logger
 logger = logging.getLogger("AppLogger")
 
-#==============================================================
+
+# ==============================================================
 # Similar to ArticleService. Check here if no image is found.
 # Same thing for test cases here.
-#==============================================================
+# ==============================================================
 
 class ArticleImageExtractionService(BaseModel):
     @staticmethod

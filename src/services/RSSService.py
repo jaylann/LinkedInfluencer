@@ -1,3 +1,4 @@
+import logging
 import xml.etree.ElementTree as ET
 from typing import List
 
@@ -5,7 +6,6 @@ import requests
 from pydantic import ValidationError
 
 from src.models.RSSItem import RSSItem
-import logging
 
 
 class RSSService:

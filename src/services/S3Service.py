@@ -1,9 +1,9 @@
+import logging
 from datetime import datetime, timezone
 from xml.etree import ElementTree as ET
 
 import boto3
 from botocore.exceptions import ClientError
-import logging
 
 from src.models.Post import Post
 from src.models.RSSFeed import RSSFeed
