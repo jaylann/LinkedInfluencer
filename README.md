@@ -28,7 +28,9 @@ Welcome to **LinkedInfluencer**, a cutting-edge Python application designed to t
 
 ## 🔧 Architecture
 
-![Architecture Diagram](path/to/architecture-diagram.png)
+![Architecture Diagram](https://cdn.lanfermann.dev/blogs/the-perfect-linkedin-influencer/Full_Diagram_Dark.svg)
+
+---
 
 ## 🚀 Getting Started
 
@@ -48,8 +50,8 @@ Before you begin, ensure you have met the following requirements:
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/yourusername/linkedinfluencer-automator.git
-   cd linkedinfluencer-automator
+   git clone https://github.com/jaylann/LinkedInfluencer.git
+   cd LinkedInfluencer
    ```
 
 2. **Set Up Environment Variables**
@@ -155,6 +157,8 @@ The application can be run locally or deployed to AWS Lambda. Below are instruct
 1. **RSS Feed Setup**: The application updates an XML RSS feed stored in S3.
 2. **Zapier Connection**: Configure Zapier to monitor the RSS feed and post new items to LinkedIn.
 3. **Automation Workflow**: As new posts are added to the RSS feed, Zapier triggers LinkedIn posts automatically.
+
+---
 
 ## 🛠️ Contributing
 
