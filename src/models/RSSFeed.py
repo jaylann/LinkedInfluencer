@@ -1,3 +1,5 @@
+import os
+
 from pydantic import BaseModel, Field
 
 #==============================================================
@@ -11,7 +13,7 @@ from pydantic import BaseModel, Field
 
 class RSSFeed(BaseModel):
     """Represents the structure of YOUR RSS feed."""
-    title: str = Field(default="Justin Lanfermann LinkedIn Feed")
-    link: str = Field(default="https://www.linkedin.com/in/justin-lanfermann-07352124b/")
-    description: str = Field(default="Here I post the most exciting pieces of news in the tech world!")
+    title: str = Field(default=os.getenv("RSS_FEED_TITLE", "My RSS Feed"))
+    link: str = Field(default=os.getenv("RSS_FEED_LINK", "https://www.example.com/rss"))
+    description: str = Field(default=os.getenv("RSS_FEED_DESCRIPTION", "The latest news from my website."))
     language: str = Field(default="en-us")
