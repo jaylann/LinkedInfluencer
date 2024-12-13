@@ -163,3 +163,9 @@ The application can be run locally or deployed to AWS Lambda. Below are instruct
 ## 🛠️ Contributing
 
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://lanfermann.dev">Justin Lanfermann</a>
+</p>
