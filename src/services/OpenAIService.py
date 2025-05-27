@@ -1,45 +1,147 @@
+from __future__ import annotations
+
+"""Services that interface with the OpenAI Python SDK (v≥1.80)."""
+
+
 import json
 import logging
-import re
-from doctest import UnexpectedException
-from typing import List
+from typing import Iterable, List, Sequence, cast
 
 from openai import OpenAI
+from openai._exceptions import OpenAIError
+from openai.types.chat import ChatCompletionMessageParam
+from openai.types.chat.completion_create_params import ResponseFormat
 
 from src.models.OpenAIConfig import OpenAIConfig
 from src.models.Post import Post
 from src.models.RSSItem import RSSItem
 from src.utils.TextUtils import contains_markdown
 
+logger = logging.getLogger("AppLogger")
 
-class OpenAIService:
-    """Service for interacting with OpenAI API."""
 
-    def __init__(self, config: OpenAIConfig):
-        """
-        Initialize OpenAIService with configuration.
+class OpenAIService:  # pylint: disable=too-few-public-methods
+    """High‑level wrapper around *chat.completions* for LinkedIn automation."""
 
-        Args:
-            config (OpenAIConfig): Configuration for OpenAI client.
-        """
-        self.logger = logging.getLogger("AppLogger")
-        self.logger.info("Initializing OpenAIService with model: %s", config.model)
-        self.client = OpenAI(api_key=config.api_key)
-        self.model = config.model
+    _MAX_TOKENS = 4096  # per‑request hard‑limit (model‑specific)
 
-    def generate_post(self, message: str, item: RSSItem) -> Post:
-        """
-        Generate a post using OpenAI's API based on the provided message.
+    def __init__(self, config: OpenAIConfig) -> None:  # noqa: D401
+        """Create a dedicated :class:`OpenAI` client scoped to *config*."""
+        logger.info("Initialising OpenAIService with model: %s", config.model)
+        self._client: OpenAI = OpenAI(api_key=config.api_key)
+        self._model: str = config.model
 
-        Args:
-            message (str): The message to base the post on.
-            item (RSSItem): The RSS item containing additional information.
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+    JSON_MODE: ResponseFormat = cast(ResponseFormat, {"type": "json_object"})
+    def generate_post(self, article: str, item: RSSItem) -> Post:
+        """Generate a LinkedIn post that *must* be valid JSON (JSON mode)."""
 
-        Returns:
-            Post: A generated Post object.
-        """
-        self.logger.info("Starting post generation for RSS item: %s", item.title)
-        system_message = """
+        system_msg = _SYSTEM_PROMPT
+        user_msg = f"<article>\n{article}\n</article>"
+
+        # Build a statically‑typed *messages* list; cast is safe because the
+        # dict literals satisfy the TypedDict contract.
+        messages: List[ChatCompletionMessageParam] = cast(
+            List[ChatCompletionMessageParam],
+            [
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg},
+            ],
+        )
+
+        attempt = 0
+        json_obj: dict | None = None
+        while attempt < 5:
+            attempt += 1
+            try:
+                completion = self._client.chat.completions.create(
+                    model=self._model,
+                    messages=messages,
+                    temperature=1.0,
+                    max_tokens=self._MAX_TOKENS,
+                    response_format=self.JSON_MODE,
+                )
+                json_obj = json.loads(completion.choices[0].message.content)
+
+                # If the model smuggled markdown, strip and retry once.
+                if contains_markdown(json_obj.get("content", "")) and attempt < 5:
+                    messages[-1] = cast(
+                        ChatCompletionMessageParam,
+                        {"role": "user", "content": json_obj["content"]},
+                    )
+                    logger.debug("Markdown spotted – retrying (attempt %d)…", attempt + 1)
+                    continue
+                break  # success
+            except (OpenAIError, json.JSONDecodeError) as exc:
+                logger.exception("OpenAI call failed (%s) – attempt %d/5", exc, attempt)
+                if attempt == 5:
+                    raise
+
+        if json_obj is None:
+            raise RuntimeError("Unable to obtain valid JSON from OpenAI after 5 attempts.")
+
+        post = Post(
+            title=json_obj["title"],
+            content=json_obj["content"],
+            tags=json_obj["tags"],
+            source_link=item.link,
+            image_link="",
+        )
+        logger.info("Post generated ✓: %s", post.title)
+        return post
+
+    # ------------------------------------------------------------------
+    # Headline picker
+    # ------------------------------------------------------------------
+
+    def choose_post(
+            self,
+            candidates: Sequence[RSSItem],
+            already_posted: Sequence[Post],
+    ) -> RSSItem:
+        """Pick the most viral‑worthy headline that hasn't been posted yet."""
+
+        system_msg = _HEADLINE_PICKER_PROMPT
+        new_list = "\n".join(f"{i}. {it.title}" for i, it in enumerate(candidates))
+        posted_list = "\n".join(f"{i}. {p.title}" for i, p in enumerate(already_posted))
+        user_msg = f"<new_list>\n{new_list}\n</new_list>\n<posted_list>\n{posted_list}\n</posted_list>"
+
+        messages: Iterable[ChatCompletionMessageParam] = cast(
+            List[ChatCompletionMessageParam],
+            [
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg},
+            ],
+        )
+
+        completion = self._client.chat.completions.create(
+            model=self._model,
+            messages=messages,
+            temperature=0.7,
+            max_tokens=50,
+            response_format=self.JSON_MODE,
+        )
+
+        try:
+            data = json.loads(completion.choices[0].message.content)
+            chosen_idx = int(data["chosen_headline_index"])
+        except (KeyError, ValueError, json.JSONDecodeError) as exc:
+            logger.exception("Malformed assistant response: %s", exc)
+            raise
+
+        if not 0 <= chosen_idx < len(candidates):
+            raise IndexError(
+                f"Assistant chose invalid index {chosen_idx}; must be within 0‑{len(candidates)-1}."
+            )
+
+        chosen_item = candidates[chosen_idx]
+        logger.info("Chosen headline ✓: %s", chosen_item.title)
+        return chosen_item
+
+
+_SYSTEM_PROMPT = """
 <system>
   <role>
     You are a highly influential LinkedIn content creator with a strong software-engineering background.
@@ -85,67 +187,7 @@ class OpenAIService:
 </system>
 """
 
-
-
-        counter = 0
-        max_attempts = 5
-        json_response = None
-
-        while contains_markdown(message) and counter < max_attempts:
-            self.logger.debug("Attempt %d to generate post without Markdown.", counter + 1)
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": message}
-                    ],
-                    temperature=1,
-                    max_tokens=2048,
-                    top_p=1,
-                    frequency_penalty=0,
-                    presence_penalty=0,
-                    response_format={"type": "json_object"}
-                )
-                self.logger.debug("Received response from OpenAI API.")
-                json_response = json.loads(response.choices[0].message.content)
-                self.logger.debug("Parsed JSON response: %s", json_response)
-                message = json_response.get('content', '')
-                counter += 1
-            except json.JSONDecodeError as e:
-                self.logger.error("JSON decoding failed: %s", e)
-                raise
-            except Exception as e:
-                self.logger.error("Error during OpenAI API call: %s", e)
-                raise
-
-        if not json_response:
-            self.logger.error("Failed to generate post content after %d attempts.", max_attempts)
-            raise UnexpectedException("Failed to generate post content.")
-
-        post = Post(
-            title=json_response['title'],
-            content=json_response['content'],
-            tags=json_response['tags'],
-            source_link=item.link,
-            image_link=""
-        )
-        self.logger.info("Successfully generated post: %s", post.title)
-        return post
-
-    def choose_post(self, items: List[RSSItem], already_posted: List[Post]) -> RSSItem:
-        """
-        Choose the most interesting post from a list of RSS items.
-
-        Args:
-            items (List[RSSItem]): List of new RSS items to choose from.
-            already_posted (List[Post]): List of already posted items.
-
-        Returns:
-            RSSItem: The chosen RSS item.
-        """
-        self.logger.info("Choosing a post from %d new items.", len(items))
-        system_message = """
+_HEADLINE_PICKER_PROMPT = """
 <system>
   <role>Expert viral-content strategist for LinkedIn.</role>
 
@@ -178,40 +220,3 @@ class OpenAIService:
   </rules>
 </system>
 """
-
-        new_items = "\n".join(f"{i + 1}. {item.title}" for i, item in enumerate(items))
-        posted_items = "\n".join(f"{i + 1}. {item.title}" for i, item in enumerate(already_posted))
-        user_message = f"New:\n{new_items}\n\nAlready Posted:\n{posted_items}"
-
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": user_message}
-                ],
-                temperature=1,
-                max_tokens=100,
-                top_p=1,
-                frequency_penalty=0,
-                presence_penalty=0,
-                response_format={"type": "json_object"}
-            )
-            self.logger.debug("Received response from OpenAI API for choosing post.")
-            json_response = json.loads(response.choices[0].message.content)
-            chosen_index = int(json_response['chosen']) - 1
-            if not (0 <= chosen_index < len(items)):
-                self.logger.error("Chosen index %d is out of bounds.", chosen_index)
-                raise IndexError("Chosen index is out of bounds.")
-            chosen_item = items[chosen_index]
-            self.logger.info("Chosen post: %s", chosen_item.title)
-            return chosen_item
-        except json.JSONDecodeError as e:
-            self.logger.error("JSON decoding failed: %s", e)
-            raise
-        except (KeyError, ValueError, IndexError) as e:
-            self.logger.error("Invalid response format or index error: %s", e)
-            raise
-        except Exception as e:
-            self.logger.error("Error during OpenAI API call: %s", e)
-            raise
