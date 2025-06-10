@@ -4,6 +4,6 @@ html2text==2024.2.26
 openai==1.82.0
 pydantic==2.9.1
 python_dateutil==2.9.0.post0
-Requests==2.32.3
+Requests==2.32.4
 traitlets==5.14.3
 python-dotenv
